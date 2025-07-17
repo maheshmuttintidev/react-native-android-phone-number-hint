@@ -29,12 +29,18 @@ The **Phone Number Hint API** (part of Google Identity Services) allows apps to 
 ### 📦 Install the package
 
 ```bash
-npm install react-native-android-phone-number-hint
+npm install @shayrn/react-native-android-phone-number-hint
 # or
-yarn add react-native-android-phone-number-hint
-````
+yarn add @shayrn/react-native-android-phone-number-hint
+# or
+npx expo install @shayrn/react-native-android-phone-number-hint
+```
 
----
+> **Important:** This package will **not** work with Expo Go.  
+> To test it, use either:
+> - A custom development build (via EAS)
+> - A bare React Native app
+
 
 ### ⚙️ Android Setup (Manual Linking)
 
@@ -60,14 +66,6 @@ override fun getPackages(): List<ReactPackage> {
         add(AndroidPhoneNumberHintPackage()) // NOTE: add this line
     }
 }
-
-override fun getJSMainModuleName(): String = "index"
-
-override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-
-override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-
-override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
 ```
 
 #### 2. Ensure `minSdkVersion` is 24 or higher
@@ -420,6 +418,22 @@ const styles = StyleSheet.create({
 
 ---
 
+## Troubleshoot Phone Number Permissions
+
+Follow these steps to enable phone number sharing on Android:
+
+1. Open **Settings**  
+   Scroll down and tap on **Google**  
+   ![Google Settings](./settings.jpeg)
+
+2. Tap on **Phone number sharing**  
+   ![Phone Number Sharing Option](./google-services-settings.jpeg)
+
+3. Turn on the **Phone number sharing** toggle  
+   ![Enable Phone Number Sharing](./phone-number-sharing-option.jpeg)
+
+---
+
 ## ✅ Compatibility
 
 | Platform | Support               |
@@ -441,7 +455,7 @@ const styles = StyleSheet.create({
 
 ## 📄 License
 
-MIT © 2025 \[Your Name or Org]
+MIT © 2025 \[Mahesh Muttinti]
 
 ---
 
