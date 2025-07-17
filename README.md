@@ -1,11 +1,7 @@
-Here’s your updated **README.md** with improved structure, modern usage example (based on your `App.tsx`), and clarified instructions for Turborepo or React Native monorepo setups:
 
----
-
-````md
 # 📞 React Native Android Phone Number Hint
 
-[![npm version](https://img.shields.io/npm/v/react-native-android-phone-number-hint.svg)](https://www.npmjs.com/package/react-native-android-phone-number-hint)
+[![npm version](https://img.shields.io/npm/v/react-native-android-phone-number-hint.svg)](https://www.npmjs.com/@shayrn/react-native-android-phone-number-hint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A simple and lightweight React Native package that allows Android users to **select their SIM-based phone number** using the native **Google Phone Number Hint Picker**. This improves user experience by avoiding manual number entry.
