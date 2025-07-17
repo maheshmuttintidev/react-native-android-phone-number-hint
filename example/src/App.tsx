@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { showPhoneNumberHint } from 'react-native-android-phone-number-hint';
+import { showPhoneNumberHint } from '@shayrn/react-native-android-phone-number-hint';
 
 export default function App() {
   const [phoneNumber, setPhoneNumber] = useState('');

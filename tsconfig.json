@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-android-phone-number-hint": ["./src/index"]
+      "@shayrn/react-native-android-phone-number-hint": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
