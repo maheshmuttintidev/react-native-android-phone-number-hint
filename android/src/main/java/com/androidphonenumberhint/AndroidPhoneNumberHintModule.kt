@@ -59,7 +59,7 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
     }
 
     mPromise = promise
-    val activity = currentActivity
+    val activity = reactApplicationContext.currentActivity
     if (activity == null) {
       mPromise = null
       promise.reject("NO_ACTIVITY", "Activity is null")
