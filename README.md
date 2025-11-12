@@ -1,7 +1,6 @@
 
-# 📞 React Native Android Phone Number Hint
-
-[![npm version](https://img.shields.io/npm/v/react-native-android-phone-number-hint.svg)](https://www.npmjs.com/package/@shayrn/react-native-android-phone-number-hint)
+# React Native Android Phone Number Hint
+[![npm version](https://img.shields.io/npm/v/%40shayrn%2Freact-native-android-phone-number-hint.svg)](https://www.npmjs.com/package/@shayrn/react-native-android-phone-number-hint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A simple and lightweight React Native package that allows Android users to **select their SIM-based phone number** using the native **Google Phone Number Hint Picker**. This improves user experience by avoiding manual number entry.
@@ -462,13 +461,13 @@ MIT © 2025 \[Mahesh Muttinti]
 ## 🙌 Contributing
 
 Got suggestions or bug fixes? PRs and issues are welcome!
-👉 [GitHub Issues](https://github.com/your-username/react-native-android-phone-number-hint/issues)
+👉 [GitHub Issues](https://github.com/maheshmuttintidev/react-native-android-phone-number-hint/issues)
 
 ---
 
 ## 💬 Questions?
 
 Join the conversation:
-👉 [GitHub Discussions](https://github.com/your-username/react-native-android-phone-number-hint/discussions)
+👉 [GitHub Discussions](https://github.com/maheshmuttintidev/react-native-android-phone-number-hint/discussions)
 
 
