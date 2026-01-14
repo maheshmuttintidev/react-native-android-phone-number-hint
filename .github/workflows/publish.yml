@@ -5,8 +5,8 @@ on:
       - main
 
 permissions:
-  id-token: write # Required for OIDC
-  contents: read
+  id-token: write # Required for OIDC/provenance
+  contents: write # Required for git push
 
 jobs:
   publish:
@@ -103,6 +103,8 @@ jobs:
           git push origin main
           git push origin "v$VERSION"
 
-      # Publish to npm
+      # Publish to npm with provenance
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
