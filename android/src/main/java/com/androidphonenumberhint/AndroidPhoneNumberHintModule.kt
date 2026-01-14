@@ -21,6 +21,7 @@ import com.google.android.gms.common.api.ResolvableApiException
 class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), TurboModule {
 
   private var mPromise: Promise? = null
+  private var mShowGuidanceDialog: Boolean = false
 
   init {
     reactContext.addActivityEventListener(object : BaseActivityEventListener() {
@@ -28,6 +29,7 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
         if (requestCode == REQUEST_CODE) {
           val promise = mPromise
           mPromise = null
+          mShowGuidanceDialog = false
 
           if (resultCode == Activity.RESULT_OK && data != null) {
             try {
@@ -51,17 +53,26 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
     return NAME
   }
 
+  /**
+   * Shows the phone number hint picker with options.
+   * @param options ReadableMap containing:
+   *   - showGuidanceDialog: Boolean (default: false) - Whether to show guidance dialog on error
+   * @param promise Promise to resolve with phone number or reject with error
+   */
   @ReactMethod
-  fun showPhoneNumberHint(promise: Promise) {
+  fun showPhoneNumberHint(options: ReadableMap?, promise: Promise) {
     if (mPromise != null) {
       promise.reject("ALREADY_IN_PROGRESS", "Phone number hint request already in progress")
       return
     }
 
     mPromise = promise
+    mShowGuidanceDialog = options?.getBoolean("showGuidanceDialog") ?: false
+    
     val activity = reactApplicationContext.currentActivity
     if (activity == null) {
       mPromise = null
+      mShowGuidanceDialog = false
       promise.reject("NO_ACTIVITY", "Activity is null")
       return
     }
@@ -84,6 +95,7 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
           Log.e(TAG, "Failed to start phone number hint intent", e)
           mPromise?.reject("INTENT_ERROR", "Failed to start phone number hint: ${e.message}")
           mPromise = null
+          mShowGuidanceDialog = false
         }
       }
       .addOnFailureListener { e ->
@@ -100,44 +112,82 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
 
     Log.e(TAG, "Phone Number Hint API failure. Error code: $errorCode, Exception: ${exception.message}")
 
+    // Create detailed error info for JavaScript side
+    val errorDetails = WritableNativeMap().apply {
+      putInt("statusCode", errorCode)
+      putString("message", exception.message)
+    }
+
     when (errorCode) {
       CommonStatusCodes.RESOLUTION_REQUIRED -> {
-        // This usually means user needs to enable something
-        if (exception is ResolvableApiException) {
+        // This usually means user needs to enable phone number sharing
+        if (mShowGuidanceDialog) {
           showAutofillGuidance(activity)
-          mPromise?.reject("RESOLUTION_REQUIRED", "Phone number hints disabled. Please enable in settings.")
-        } else {
-          mPromise?.reject("RESOLUTION_REQUIRED", "Phone number hints need to be enabled in settings")
         }
+        mPromise?.reject(
+          "RESOLUTION_REQUIRED",
+          "Phone number hints disabled. Please enable in Settings → Google → Phone number sharing.",
+          exception
+        )
       }
       CommonStatusCodes.API_NOT_CONNECTED -> {
-        showAutofillGuidance(activity)
-        mPromise?.reject("API_NOT_CONNECTED", "Google Play Services not connected. Please enable phone number hints in settings.")
+        if (mShowGuidanceDialog) {
+          showAutofillGuidance(activity)
+        }
+        mPromise?.reject(
+          "API_NOT_CONNECTED",
+          "Google Play Services not connected. Please enable phone number hints in settings.",
+          exception
+        )
       }
       CommonStatusCodes.DEVELOPER_ERROR -> {
-        mPromise?.reject("DEVELOPER_ERROR", "API configuration error: ${exception.message}")
+        mPromise?.reject(
+          "DEVELOPER_ERROR",
+          "API configuration error: ${exception.message}",
+          exception
+        )
       }
       CommonStatusCodes.NETWORK_ERROR -> {
-        mPromise?.reject("NETWORK_ERROR", "Network error occurred: ${exception.message}")
+        mPromise?.reject(
+          "NETWORK_ERROR",
+          "Network error occurred: ${exception.message}",
+          exception
+        )
       }
       CommonStatusCodes.SIGN_IN_REQUIRED -> {
-        mPromise?.reject("SIGN_IN_REQUIRED", "Google account sign-in required")
+        mPromise?.reject(
+          "SIGN_IN_REQUIRED",
+          "Google account sign-in required",
+          exception
+        )
       }
       else -> {
-        // For unknown errors, still show guidance as it might be a settings issue
-        showAutofillGuidance(activity)
-        mPromise?.reject("UNKNOWN_ERROR", "Phone number hint failed: ${exception.message}. Error code: $errorCode")
+        // For unknown errors, optionally show guidance as it might be a settings issue
+        if (mShowGuidanceDialog) {
+          showAutofillGuidance(activity)
+        }
+        mPromise?.reject(
+          "UNKNOWN_ERROR",
+          "Phone number hint failed: ${exception.message}. Error code: $errorCode",
+          exception
+        )
       }
     }
     mPromise = null
+    mShowGuidanceDialog = false
   }
 
+  /**
+   * Shows a guidance dialog to help users enable phone number hints.
+   * This is only called when showGuidanceDialog option is true.
+   */
   private fun showAutofillGuidance(activity: Activity) {
     Log.d(TAG, "Showing autofill guidance dialog")
     try {
       AlertDialog.Builder(activity)
         .setTitle("Enable Phone Number Hints")
-        .setMessage("To use phone number hints, please enable phone number sharing:\n\n• Settings → Google → All services → Phone number sharing\n• OR Settings → System → Languages & input → Advanced → Autofill service → Google\n• OR Settings → Google → Autofill → Google\n\nAlso ensure you have a phone number saved in your Google account.")        .setPositiveButton("Open Settings") { _, _ ->
+        .setMessage("To use phone number hints, please enable phone number sharing:\n\n• Settings → Google → All services → Phone number sharing\n• OR Settings → System → Languages & input → Advanced → Autofill service → Google\n• OR Settings → Google → Autofill → Google\n\nAlso ensure you have a phone number saved in your Google account.")
+        .setPositiveButton("Open Settings") { _, _ ->
           openAutofillSettings(activity)
         }
         .setNegativeButton("Cancel", null)

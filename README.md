@@ -1,5 +1,5 @@
-
 # React Native Android Phone Number Hint
+
 [![npm version](https://img.shields.io/npm/v/%40shayrn%2Freact-native-android-phone-number-hint.svg)](https://www.npmjs.com/package/@shayrn/react-native-android-phone-number-hint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -37,13 +37,13 @@ npx expo install @shayrn/react-native-android-phone-number-hint
 
 > **Important:** This package will **not** work with Expo Go.  
 > To test it, use either:
+>
 > - A custom development build (via EAS)
 > - A bare React Native app
 
-
 ### ⚙️ Android Setup (Manual Linking)
 
-#### 1. Add Play Services Auth dependency 
+#### 1. Add Play Services Auth dependency
 
 In `android/app/build.gradle`:
 
@@ -98,6 +98,98 @@ pluginManagement {
 
 ## 🛠️ End to End Fully Feature Usage Example
 
+### Basic Usage (Recommended)
+
+```tsx
+import {
+  showPhoneNumberHint,
+  PhoneNumberHintErrorCodes,
+} from '@shayrn/react-native-android-phone-number-hint';
+
+// Simple usage - handle errors in your app
+const getPhoneNumber = async () => {
+  try {
+    const phoneNumber = await showPhoneNumberHint();
+    console.log('Phone number:', phoneNumber);
+  } catch (error: any) {
+    switch (error.code) {
+      case PhoneNumberHintErrorCodes.USER_CANCELLED:
+        // User dismissed the picker - this is normal, no action needed
+        break;
+      case PhoneNumberHintErrorCodes.RESOLUTION_REQUIRED:
+      case PhoneNumberHintErrorCodes.API_NOT_CONNECTED:
+        // Phone number hints disabled - show your own custom UI
+        Alert.alert(
+          'Enable Phone Number Hints',
+          'Please enable phone number sharing in Settings → Google → Phone number sharing',
+          [{ text: 'OK' }]
+        );
+        break;
+      case PhoneNumberHintErrorCodes.NETWORK_ERROR:
+        Alert.alert('Network Error', 'Please check your connection');
+        break;
+      default:
+        console.error('Phone hint error:', error.message);
+    }
+  }
+};
+```
+
+### With Built-in Guidance Dialog (Optional)
+
+If you prefer the library to show a guidance dialog when phone hints are unavailable:
+
+```tsx
+import { showPhoneNumberHint } from '@shayrn/react-native-android-phone-number-hint';
+
+// With built-in guidance dialog enabled
+const getPhoneNumber = async () => {
+  try {
+    const phoneNumber = await showPhoneNumberHint({
+      showGuidanceDialog: true, // Shows native dialog with settings instructions
+    });
+    console.log('Phone number:', phoneNumber);
+  } catch (error: any) {
+    // Error is still thrown, but user will have seen the guidance dialog
+    console.log('Error code:', error.code);
+  }
+};
+```
+
+### API Reference
+
+#### `showPhoneNumberHint(options?)`
+
+Shows the native Android phone number hint picker.
+
+**Parameters:**
+
+| Option               | Type      | Default | Description                                                        |
+| -------------------- | --------- | ------- | ------------------------------------------------------------------ |
+| `showGuidanceDialog` | `boolean` | `false` | Whether to show a guidance dialog when phone hints are unavailable |
+
+**Returns:** `Promise<string>` - The selected phone number
+
+**Error Codes:**
+
+| Code                  | Description                                        |
+| --------------------- | -------------------------------------------------- |
+| `USER_CANCELLED`      | User dismissed the phone number picker             |
+| `RESOLUTION_REQUIRED` | Phone number hints are disabled in device settings |
+| `API_NOT_CONNECTED`   | Google Play Services not connected or unavailable  |
+| `NETWORK_ERROR`       | Network connectivity issue                         |
+| `SIGN_IN_REQUIRED`    | Google account sign-in required                    |
+| `DEVELOPER_ERROR`     | API configuration error                            |
+| `NO_ACTIVITY`         | No active Android activity available               |
+| `ALREADY_IN_PROGRESS` | A hint request is already in progress              |
+| `INTENT_ERROR`        | Failed to launch the phone number picker           |
+| `GET_PHONE_ERROR`     | Failed to retrieve phone number from result        |
+| `UNKNOWN_ERROR`       | Unexpected error occurred                          |
+
+### Complete Example with All Features
+
+### Complete Example with All Features
+
 ```tsx
 import { useEffect, useState } from 'react';
 import {
@@ -108,7 +200,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { showPhoneNumberHint } from '@shayrn/react-native-android-phone-number-hint';
+import {
+  showPhoneNumberHint,
+  PhoneNumberHintErrorCodes,
+} from '@shayrn/react-native-android-phone-number-hint';
 
 export default function App() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -406,7 +501,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 });
-
 ```
 
 ---
@@ -435,8 +529,8 @@ Follow these steps to enable phone number sharing on Android:
 
 ## ✅ Compatibility
 
-| Platform | Support               |
-| -------- | --------------------- |
+| Platform | Support                |
+| -------- | ---------------------- |
 | Android  | ✅ Supported (API 24+) |
 | iOS      | ❌ Not supported       |
 
@@ -446,9 +540,9 @@ Follow these steps to enable phone number sharing on Android:
 
 ## 🧠 Notes
 
-* Uses [Google Identity Services](https://developers.google.com/identity) under the hood
-* Requires no special permissions (like `READ_PHONE_STATE`)
-* Phone number may return `null` if the user cancels or SIM not found
+- Uses [Google Identity Services](https://developers.google.com/identity) under the hood
+- Requires no special permissions (like `READ_PHONE_STATE`)
+- Phone number may return `null` if the user cancels or SIM not found
 
 ---
 
@@ -469,5 +563,3 @@ Got suggestions or bug fixes? PRs and issues are welcome!
 
 Join the conversation:
 👉 [GitHub Discussions](https://github.com/maheshmuttintidev/react-native-android-phone-number-hint/discussions)
-
-

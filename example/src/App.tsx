@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
-import { showPhoneNumberHint } from '@shayrn/react-native-android-phone-number-hint';
+import {
+  showPhoneNumberHint,
+  PhoneNumberHintErrorCodes,
+} from '@shayrn/react-native-android-phone-number-hint';
 
 export default function App() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showGuidanceDialog, setShowGuidanceDialog] = useState(false);
   const [_, setHasAttempted] = useState(false);
 
   const requestPhoneNumber = async () => {
@@ -21,29 +26,36 @@ export default function App() {
     setHasAttempted(true);
 
     try {
-      const _phoneNumber = await showPhoneNumberHint();
+      // Pass the showGuidanceDialog option
+      const _phoneNumber = await showPhoneNumberHint({
+        showGuidanceDialog: showGuidanceDialog,
+      });
       setPhoneNumber(_phoneNumber);
     } catch (err: any) {
       console.log('🚀 ~ requestPhoneNumber ~ err:', err);
 
-      // Handle different error types
-      if (err.code === 'USER_CANCELLED') {
-        setError('Phone number selection was cancelled');
-      } else if (
-        err.code === 'RESOLUTION_REQUIRED' ||
-        err.code === 'API_NOT_CONNECTED'
-      ) {
-        setError(
-          'Phone number hints are disabled. Please enable in Settings → Google → Phone number sharing'
-        );
-      } else if (err.code === 'NO_ACTIVITY') {
-        setError('App is not ready. Please try again');
-      } else if (err.code === 'NETWORK_ERROR') {
-        setError('Network error. Please check your connection and try again');
-      } else if (err.code === 'SIGN_IN_REQUIRED') {
-        setError('Please sign in to your Google account to use this feature');
-      } else {
-        setError('Unable to retrieve phone number. Please try again');
+      // Handle different error types using exported error codes
+      switch (err.code) {
+        case PhoneNumberHintErrorCodes.USER_CANCELLED:
+          setError('Phone number selection was cancelled');
+          break;
+        case PhoneNumberHintErrorCodes.RESOLUTION_REQUIRED:
+        case PhoneNumberHintErrorCodes.API_NOT_CONNECTED:
+          setError(
+            'Phone number hints are disabled. Please enable in Settings → Google → Phone number sharing'
+          );
+          break;
+        case PhoneNumberHintErrorCodes.NO_ACTIVITY:
+          setError('App is not ready. Please try again');
+          break;
+        case PhoneNumberHintErrorCodes.NETWORK_ERROR:
+          setError('Network error. Please check your connection and try again');
+          break;
+        case PhoneNumberHintErrorCodes.SIGN_IN_REQUIRED:
+          setError('Please sign in to your Google account to use this feature');
+          break;
+        default:
+          setError('Unable to retrieve phone number. Please try again');
       }
     } finally {
       setLoading(false);
@@ -52,6 +64,7 @@ export default function App() {
 
   useEffect(() => {
     requestPhoneNumber();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showErrorDetails = () => {
@@ -135,6 +148,15 @@ export default function App() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.appTitle}>Phone Number Hint Demo</Text>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionLabel}>Show Guidance Dialog</Text>
+          <Switch
+            value={showGuidanceDialog}
+            onValueChange={setShowGuidanceDialog}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={showGuidanceDialog ? '#ffffff' : '#f4f3f4'}
+          />
+        </View>
       </View>
       {renderContent()}
     </View>
@@ -162,6 +184,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  optionLabel: {
+    color: 'white',
+    fontSize: 14,
+    marginRight: 10,
   },
   contentContainer: {
     flex: 1,
