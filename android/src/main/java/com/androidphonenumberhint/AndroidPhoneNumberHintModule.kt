@@ -49,6 +49,27 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
     })
   }
 
+  /**
+   * Returns the `showGuidanceDialog` option, defaulting to false when options are
+   * null, the key is missing, or the value is not a boolean.
+   */
+  private fun readShowGuidanceDialog(options: ReadableMap?): Boolean {
+    if (options == null || !options.hasKey("showGuidanceDialog")) {
+      return false
+    }
+    return try {
+      if (options.getType("showGuidanceDialog") == ReadableType.Boolean) {
+        options.getBoolean("showGuidanceDialog")
+      } else {
+        Log.w(TAG, "Ignoring non-boolean showGuidanceDialog option")
+        false
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Failed to read showGuidanceDialog option", e)
+      false
+    }
+  }
+
   override fun getName(): String {
     return NAME
   }
@@ -66,16 +87,18 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
       return
     }
 
-    mPromise = promise
-    mShowGuidanceDialog = options?.getBoolean("showGuidanceDialog") ?: false
-    
+    // Read and validate options before storing the pending promise, so a bad
+    // input can never leave a request stuck in ALREADY_IN_PROGRESS.
+    val showGuidanceDialog = readShowGuidanceDialog(options)
+
     val activity = reactApplicationContext.currentActivity
     if (activity == null) {
-      mPromise = null
-      mShowGuidanceDialog = false
       promise.reject("NO_ACTIVITY", "Activity is null")
       return
     }
+
+    mPromise = promise
+    mShowGuidanceDialog = showGuidanceDialog
 
     val request = GetPhoneNumberHintIntentRequest.builder().build()
     Identity.getSignInClient(activity)
