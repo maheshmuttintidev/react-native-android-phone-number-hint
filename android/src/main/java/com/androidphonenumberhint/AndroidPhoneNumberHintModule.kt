@@ -34,7 +34,7 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
           if (resultCode == Activity.RESULT_OK && data != null) {
             try {
               val phoneNumber = Identity.getSignInClient(activity).getPhoneNumberFromIntent(data)
-              Log.d(TAG, "Phone number retrieved successfully: $phoneNumber")
+              Log.d(TAG, "Phone number retrieved successfully")
               promise?.resolve(phoneNumber)
             } catch (e: Exception) {
               Log.e(TAG, "Failed to get phone number from intent", e)
