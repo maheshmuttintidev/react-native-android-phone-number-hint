@@ -12,7 +12,7 @@ import android.provider.Settings
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import android.os.Build
-import androidx.appcompat.app.AlertDialog
+import android.app.AlertDialog
 import com.google.android.gms.common.api.ResolvableApiException
 
 
