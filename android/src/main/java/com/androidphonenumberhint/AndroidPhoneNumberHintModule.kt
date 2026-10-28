@@ -2,7 +2,6 @@ package com.androidphonenumberhint
 
 import android.app.Activity
 import android.content.Intent
-import android.content.IntentSender
 import android.util.Log
 import com.facebook.react.bridge.*
 import com.facebook.react.module.annotations.ReactModule
@@ -13,7 +12,7 @@ import android.provider.Settings
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import android.os.Build
-import androidx.appcompat.app.AlertDialog
+import android.app.AlertDialog
 import com.google.android.gms.common.api.ResolvableApiException
 
 
@@ -21,32 +20,76 @@ import com.google.android.gms.common.api.ResolvableApiException
 class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), TurboModule {
 
   private var mPromise: Promise? = null
-  private var mShowGuidanceDialog: Boolean = false
 
-  init {
-    reactContext.addActivityEventListener(object : BaseActivityEventListener() {
+  private val activityEventListener = object : BaseActivityEventListener() {
       override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_CODE) {
-          val promise = mPromise
-          mPromise = null
-          mShowGuidanceDialog = false
+          // Settle the pending promise at most once; ignore results with no pending request.
+          val promise = takePendingPromise() ?: return
 
           if (resultCode == Activity.RESULT_OK && data != null) {
             try {
               val phoneNumber = Identity.getSignInClient(activity).getPhoneNumberFromIntent(data)
-              Log.d(TAG, "Phone number retrieved successfully: $phoneNumber")
-              promise?.resolve(phoneNumber)
+              Log.d(TAG, "Phone number retrieved successfully")
+              promise.resolve(phoneNumber)
             } catch (e: Exception) {
               Log.e(TAG, "Failed to get phone number from intent", e)
-              promise?.reject("GET_PHONE_ERROR", "Failed to get phone number: ${e.message}")
+              promise.reject("GET_PHONE_ERROR", "Failed to get phone number: ${e.message}")
             }
           } else {
             Log.w(TAG, "Phone number hint cancelled or failed. ResultCode: $resultCode")
-            promise?.reject("USER_CANCELLED", "User cancelled phone number selection")
+            promise.reject("USER_CANCELLED", "User cancelled phone number selection")
           }
         }
       }
-    })
+  }
+
+  init {
+    reactContext.addActivityEventListener(activityEventListener)
+  }
+
+  /**
+   * Clears and returns the pending promise (if any). Every settle path goes through
+   * this, so a promise can never be resolved/rejected twice.
+   */
+  private fun takePendingPromise(): Promise? {
+    val promise = mPromise
+    mPromise = null
+    return promise
+  }
+
+  /**
+   * Called when the React instance is torn down (reload, app exit). Rejects any
+   * pending request so it cannot stay stuck in ALREADY_IN_PROGRESS.
+   */
+  override fun invalidate() {
+    reactApplicationContext.removeActivityEventListener(activityEventListener)
+    takePendingPromise()?.reject(
+      "NO_ACTIVITY",
+      "Phone number hint request was cancelled because the React context was invalidated"
+    )
+    super.invalidate()
+  }
+
+  /**
+   * Returns the `showGuidanceDialog` option, defaulting to false when options are
+   * null, the key is missing, or the value is not a boolean.
+   */
+  private fun readShowGuidanceDialog(options: ReadableMap?): Boolean {
+    if (options == null || !options.hasKey("showGuidanceDialog")) {
+      return false
+    }
+    return try {
+      if (options.getType("showGuidanceDialog") == ReadableType.Boolean) {
+        options.getBoolean("showGuidanceDialog")
+      } else {
+        Log.w(TAG, "Ignoring non-boolean showGuidanceDialog option")
+        false
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Failed to read showGuidanceDialog option", e)
+      false
+    }
   }
 
   override fun getName(): String {
@@ -66,21 +109,24 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
       return
     }
 
-    mPromise = promise
-    mShowGuidanceDialog = options?.getBoolean("showGuidanceDialog") ?: false
-    
+    // Read and validate options before storing the pending promise, so a bad
+    // input can never leave a request stuck in ALREADY_IN_PROGRESS.
+    val showGuidanceDialog = readShowGuidanceDialog(options)
+
     val activity = reactApplicationContext.currentActivity
     if (activity == null) {
-      mPromise = null
-      mShowGuidanceDialog = false
       promise.reject("NO_ACTIVITY", "Activity is null")
       return
     }
+
+    mPromise = promise
 
     val request = GetPhoneNumberHintIntentRequest.builder().build()
     Identity.getSignInClient(activity)
       .getPhoneNumberHintIntent(request)
       .addOnSuccessListener { pendingIntent ->
+        // Ignore if this request was already settled (e.g. module invalidated).
+        if (mPromise !== promise) return@addOnSuccessListener
         try {
           Log.d(TAG, "Starting phone number hint intent")
           activity.startIntentSenderForResult(
@@ -91,20 +137,27 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
             0,
             0
           )
-        } catch (e: IntentSender.SendIntentException) {
+        } catch (e: Exception) {
+          // SendIntentException, or any other launch failure: never leave the request pending.
           Log.e(TAG, "Failed to start phone number hint intent", e)
-          mPromise?.reject("INTENT_ERROR", "Failed to start phone number hint: ${e.message}")
-          mPromise = null
-          mShowGuidanceDialog = false
+          takePendingPromise()?.reject("INTENT_ERROR", "Failed to start phone number hint: ${e.message}")
         }
       }
       .addOnFailureListener { e ->
         Log.e(TAG, "Failed to get phone number hint intent", e)
-        handleApiFailure(e, activity)
+        // Ignore if this request was already settled (e.g. module invalidated).
+        if (mPromise !== promise) return@addOnFailureListener
+        val pendingPromise = takePendingPromise() ?: return@addOnFailureListener
+        handleApiFailure(e, activity, pendingPromise, showGuidanceDialog)
       }
   }
 
-  private fun handleApiFailure(exception: Exception, activity: Activity) {
+  private fun handleApiFailure(
+    exception: Exception,
+    activity: Activity,
+    promise: Promise,
+    showGuidanceDialog: Boolean
+  ) {
     val errorCode = when (exception) {
       is ApiException -> exception.statusCode
       else -> -1
@@ -121,41 +174,41 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
     when (errorCode) {
       CommonStatusCodes.RESOLUTION_REQUIRED -> {
         // This usually means user needs to enable phone number sharing
-        if (mShowGuidanceDialog) {
+        if (showGuidanceDialog) {
           showAutofillGuidance(activity)
         }
-        mPromise?.reject(
+        promise.reject(
           "RESOLUTION_REQUIRED",
           "Phone number hints disabled. Please enable in Settings → Google → Phone number sharing.",
           exception
         )
       }
       CommonStatusCodes.API_NOT_CONNECTED -> {
-        if (mShowGuidanceDialog) {
+        if (showGuidanceDialog) {
           showAutofillGuidance(activity)
         }
-        mPromise?.reject(
+        promise.reject(
           "API_NOT_CONNECTED",
           "Google Play Services not connected. Please enable phone number hints in settings.",
           exception
         )
       }
       CommonStatusCodes.DEVELOPER_ERROR -> {
-        mPromise?.reject(
+        promise.reject(
           "DEVELOPER_ERROR",
           "API configuration error: ${exception.message}",
           exception
         )
       }
       CommonStatusCodes.NETWORK_ERROR -> {
-        mPromise?.reject(
+        promise.reject(
           "NETWORK_ERROR",
           "Network error occurred: ${exception.message}",
           exception
         )
       }
       CommonStatusCodes.SIGN_IN_REQUIRED -> {
-        mPromise?.reject(
+        promise.reject(
           "SIGN_IN_REQUIRED",
           "Google account sign-in required",
           exception
@@ -163,18 +216,16 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
       }
       else -> {
         // For unknown errors, optionally show guidance as it might be a settings issue
-        if (mShowGuidanceDialog) {
+        if (showGuidanceDialog) {
           showAutofillGuidance(activity)
         }
-        mPromise?.reject(
+        promise.reject(
           "UNKNOWN_ERROR",
           "Phone number hint failed: ${exception.message}. Error code: $errorCode",
           exception
         )
       }
     }
-    mPromise = null
-    mShowGuidanceDialog = false
   }
 
   /**
@@ -219,7 +270,9 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
 
   companion object {
     private const val TAG = "AndroidPhoneNumberHint"
-    private const val REQUEST_CODE = 1001
+    // Arbitrary, library-specific request code (0x5048, "PH") to avoid collisions with
+    // common values like 1001 used by other modules. Must stay within 0..0xFFFF.
+    private const val REQUEST_CODE = 0x5048
     const val NAME = "AndroidPhoneNumberHint"
   }
 }

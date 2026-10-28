@@ -49,19 +49,17 @@ npx expo install @shayrn/react-native-android-phone-number-hint
 
 ### Android Setup
 
-#### 1. Add Google Play Services Dependency
+#### 1. Google Play Services Dependency (no action needed)
 
-Add the following to your `android/app/build.gradle`:
+The library already declares `com.google.android.gms:play-services-auth` (currently `21.6.0`), so you don't need to add it to your app.
 
-```gradle
-dependencies {
-  implementation 'com.google.android.gms:play-services-auth:21.3.0'
-}
-```
+If your app (or another library) declares a different version, Gradle uses the highest one. The Phone Number Hint API used here works with 21.x and 22.x. Note that `play-services-auth` 22.0.0 removed the legacy Google Sign-In APIs, so only move your app to 22.x if nothing in it still uses them.
 
-#### 2. Register the Package (if needed)
+#### 2. Package Registration (autolinking)
 
-For apps using manual linking, add the package to `MainApplication.kt`:
+React Native autolinking (RN 0.60+, including Expo dev builds) registers the package automatically. No changes to `MainApplication` are needed.
+
+Only if you have disabled autolinking for this package, register it manually in `MainApplication.kt` (don't do both, or the module will be registered twice):
 
 ```kotlin
 import com.androidphonenumberhint.AndroidPhoneNumberHintPackage
@@ -73,14 +71,16 @@ override fun getPackages(): List<ReactPackage> {
 }
 ```
 
-#### 3. Set Minimum SDK Version
+#### 3. SDK Versions
 
-Ensure your app targets Android API 24 or higher in `android/build.gradle`:
+The library requires `minSdkVersion` 24 or higher in your app's `android/build.gradle`.
+
+`targetSdkVersion` is set by your app, not by this library. Google Play requires new apps and app updates to target API 36 (Android 16) since 31 August 2026 (see [Target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878)). For example:
 
 ```properties
 minSdkVersion=24
-targetSdkVersion=34
-compileSdkVersion=35
+targetSdkVersion=36
+compileSdkVersion=36
 ```
 
 ### Monorepo Configuration
@@ -244,6 +244,7 @@ Alternative paths:
 
 - Called when there's no active React Native activity
 - Ensure the function is called after the app has fully mounted
+- Also returned for a request that was still pending when the React Native instance was reloaded or torn down, so a later call doesn't fail with `ALREADY_IN_PROGRESS`
 
 **No phone numbers shown in picker**
 
@@ -266,7 +267,11 @@ Alternative paths:
 
 ## Technical Details
 
-This library uses the [Google Identity Services Phone Number Hint API](https://developers.google.com/identity) to provide secure access to device phone numbers without requiring runtime permissions like `READ_PHONE_STATE`. The implementation uses React Native TurboModules for optimal performance and type safety.
+This library uses the [Google Identity Services Phone Number Hint API](https://developer.android.com/identity/phone-number-hint) to provide secure access to device phone numbers without requiring runtime permissions like `READ_PHONE_STATE`. The implementation uses React Native TurboModules for optimal performance and type safety.
+
+- The selected phone number is never written to the device logs.
+- Only one request can be in progress at a time; a second call rejects with `ALREADY_IN_PROGRESS`. Every request settles exactly once.
+- `showGuidanceDialog` defaults to `false` when it's omitted or isn't a boolean.
 
 ## License
 
