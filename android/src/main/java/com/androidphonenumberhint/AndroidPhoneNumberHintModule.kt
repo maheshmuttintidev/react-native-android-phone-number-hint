@@ -270,7 +270,9 @@ class AndroidPhoneNumberHintModule(reactContext: ReactApplicationContext) : Reac
 
   companion object {
     private const val TAG = "AndroidPhoneNumberHint"
-    private const val REQUEST_CODE = 1001
+    // Arbitrary, library-specific request code (0x5048, "PH") to avoid collisions with
+    // common values like 1001 used by other modules. Must stay within 0..0xFFFF.
+    private const val REQUEST_CODE = 0x5048
     const val NAME = "AndroidPhoneNumberHint"
   }
 }
