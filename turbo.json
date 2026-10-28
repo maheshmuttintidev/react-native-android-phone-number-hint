@@ -1,8 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "pipeline": {
+  "globalPassThroughEnv": [
+    "ANDROID_HOME",
+    "ANDROID_SDK_ROOT",
+    "JAVA_HOME",
+    "GRADLE_OPTS",
+    "GRADLE_USER_HOME",
+    "CI"
+  ],
+  "tasks": {
     "build:android": {
-      "env": ["ORG_GRADLE_PROJECT_newArchEnabled"],
+      "env": [
+        "ORG_GRADLE_PROJECT_newArchEnabled"
+      ],
       "inputs": [
         "package.json",
         "android",
@@ -18,7 +28,9 @@
       "outputs": []
     },
     "build:ios": {
-      "env": ["RCT_NEW_ARCH_ENABLED"],
+      "env": [
+        "RCT_NEW_ARCH_ENABLED"
+      ],
       "inputs": [
         "package.json",
         "*.podspec",
