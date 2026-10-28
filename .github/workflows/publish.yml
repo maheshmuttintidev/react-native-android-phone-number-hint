@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   id-token: write # Required for OIDC/provenance
@@ -17,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ github.token }}
 
       # Set up Node.js and Yarn
       - name: Set up Node.js and Corepack
@@ -42,7 +43,6 @@ jobs:
 
           # Enable corepack and setup yarn
           corepack enable
-          corepack prepare yarn@stable --activate
 
           # Install dependencies
           yarn install --immutable
