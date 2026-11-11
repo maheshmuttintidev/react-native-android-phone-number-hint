@@ -1,8 +1,7 @@
 name: Publish Package
+
+# Manual release only. Never runs on push.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
